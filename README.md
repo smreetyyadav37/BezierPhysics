@@ -54,12 +54,7 @@ Instead of using the recursive **De Casteljau algorithm** (less efficient for re
 
 For parameter t in [0,1] :
 
-$$
-B(t) = (1 - t)^3 P_0
-+ 3(1 - t)^2 t P_1
-+ 3(1 - t)t^2 P_2
-+ t^3 P_3
-$$
+$$ B(t) = (1 - t)^3 P_0 + 3(1 - t)^2 t P_1 + 3(1 - t)t^2 P_2 + t^3 P_3 $$
 
 - **( P0, P3 )** → Fixed anchor points (screen edges)  
 - **( P1, P2 )** → Dynamic control points driven by physics  
@@ -75,12 +70,7 @@ To visualize **direction and velocity** along the curve, the **first derivative*
 
 #### ✏️ First Derivative
 
-$$
-B'(t) =
-3(1 - t)^2 (P_1 - P_0)
-+ 6(1 - t)t (P_2 - P_1)
-+ 3t^2 (P_3 - P_2)
-$$
+$$ B'(t) = 3(1 - t)^2 (P_1 - P_0) + 6(1 - t)t (P_2 - P_1) + 3t^2 (P_3 - P_2) $$
 
 #### 🟢 Visualization Strategy
 At selected points t = 0.2, 0.5, 0.8 :
