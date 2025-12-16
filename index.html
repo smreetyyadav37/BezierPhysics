@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Physics Bézier Curve</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1a1a1a; font-family: sans-serif; }
+        canvas { display: block; }
+        #overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            pointer-events: none; 
+        }
+        h1 { margin: 0; font-size: 1.2rem; color: #4facfe; }
+        p { margin: 5px 0; font-size: 0.9rem; color: #ccc; }
+    </style>
+</head>
+<body>
+
+<div id="overlay">
+    <h1>Cubic Bézier Physics Simulation</h1>
+    <p>Move your mouse to disturb the rope.</p>
+    <p>Green Lines: Tangent Vectors | Red Dots: Dynamic Control Points</p>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+// PART 1: MATH & PHYSICS UTILITIES
+// Simple 2D Vector Class for cleaner math
+class Vec2 {
+    constructor(x, y) { this.x = x; this.y = y; }
+    add(v) { return new Vec2(this.x + v.x, this.y + v.y); }
+    sub(v) { return new Vec2(this.x - v.x, this.y - v.y); }
+    mult(n) { return new Vec2(this.x * n, this.y * n); }
+    mag() { return Math.sqrt(this.x * this.x + this.y * this.y); }
+    
+    normalize() {
+        const m = this.mag();
+        return m === 0 ? new Vec2(0,0) : new Vec2(this.x / m, this.y / m);
+    }
+}
+
+// Cubic Bézier Formula: B(t) = (1−t)³P₀ + 3(1−t)²tP₁ + 3(1−t)t²P₂ + t³P₃
+function cubicBezier(t, p0, p1, p2, p3) {
+    const k = 1 - t;
+    const kk = k * k;
+    const kkk = kk * k;
+    const tt = t * t;
+    const ttt = tt * t;
+
+    const x = kkk * p0.x + 3 * kk * t * p1.x + 3 * k * tt * p2.x + ttt * p3.x;
+    const y = kkk * p0.y + 3 * kk * t * p1.y + 3 * k * tt * p2.y + ttt * p3.y;
+    return new Vec2(x, y);
+}
+
+// Derivative Formula (Tangent): B'(t) = 3(1−t)²(P₁−P₀) + 6(1−t)t(P₂−P₁) + 3t²(P₃−P₂)
+function cubicDerivative(t, p0, p1, p2, p3) {
+    const k = 1 - t;
+    const kk = k * k;
+    const tt = t * t;
+
+    // Term 1: 3(1-t)^2 * (P1 - P0)
+    const term1 = (p1.sub(p0)).mult(3 * kk);
+    
+    // Term 2: 6(1-t)t * (P2 - P1)
+    const term2 = (p2.sub(p1)).mult(6 * k * t);
+    
+    // Term 3: 3t^2 * (P3 - P2)
+    const term3 = (p3.sub(p2)).mult(3 * tt);
+
+    return term1.add(term2).add(term3);
+}
+
+
+// PART 2: PHYSICS ENGINE (Spring-Damper)
+class PhysicsPoint {
+    constructor(x, y) {
+        this.pos = new Vec2(x, y);
+        this.vel = new Vec2(0, 0);
+        this.target = new Vec2(x, y); 
+        
+        // Physics Constants
+        this.tension = 0.05;  // Spring stiffness (k)
+        this.damping = 0.90;  // Friction (0.90 = loses 10% energy per frame)
+    }
+
+    update() {
+        // Hooke's Law: F = -k * (position - target)
+        // Acceleration is Force (assuming mass = 1)
+        const diff = this.pos.sub(this.target);
+        const acceleration = diff.mult(-this.tension);
+
+        // Update Velocity: v = v + a
+        this.vel = this.vel.add(acceleration);
+        
+        // Apply Damping: v = v * damping
+        this.vel = this.vel.mult(this.damping);
+
+        // Update Position: p = p + v
+        this.pos = this.pos.add(this.vel);
+    }
+}
+
+ // PART 3: MAIN APP LOGIC & RENDERING
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let width, height;
+let p0, p3; // Fixed endpoints
+let p1, p2; // Dynamic physics points
+
+// Mouse state
+const mouse = new Vec2(0, 0);
+
+function resize() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+    
+    // Reset points based on new screen size
+    const centerY = height / 2;
+    p0 = new Vec2(50, centerY);                  // Left Anchor
+    p3 = new Vec2(width - 50, centerY);          // Right Anchor
+    
+    // Initialize Physics Points (Control Points)
+    if (!p1) p1 = new PhysicsPoint(width * 0.33, centerY);
+    if (!p2) p2 = new PhysicsPoint(width * 0.66, centerY);
+    
+    // Update their home targets
+    p1.target = new Vec2(width * 0.33, centerY);
+    p2.target = new Vec2(width * 0.66, centerY);
+}
+
+function updatePhysics() {
+    // 1. Map mouse interaction to control point targets
+    // We create a "wind" effect. If mouse moves up, points target moves up.
+    // We offset the target based on mouse position relative to center.
+    
+    const centerX = width / 2;
+    const centerY = height / 2;
+    
+    // Calculate an offset influence (clamped so it doesn't go too wild)
+    const influenceX = (mouse.x - centerX) * 0.5;
+    const influenceY = (mouse.y - centerY) * 0.8;
+
+    // Apply to P1
+    p1.target.x = (width * 0.33) + influenceX * 0.5; // P1 moves less in X
+    p1.target.y = (centerY) + influenceY;
+
+    // Apply to P2
+    p2.target.x = (width * 0.66) + influenceX * 0.5;
+    p2.target.y = (centerY) + influenceY;
+
+    // 2. Step the physics simulation
+    p1.update();
+    p2.update();
+}
+
+function drawCurve() {
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#4facfe';
+    ctx.beginPath();
+    
+    // We sample the curve manually as requested (t increments of 0.01)
+    const steps = 100; 
+    let firstPoint = cubicBezier(0, p0, p1.pos, p2.pos, p3);
+    ctx.moveTo(firstPoint.x, firstPoint.y);
+
+    for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        const pt = cubicBezier(t, p0, p1.pos, p2.pos, p3);
+        ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.stroke();
+}
+
+function drawTangents() {
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#00f260';
+
+    // Draw tangents at t = 0.2, 0.5, 0.8
+    const tValues = [0.2, 0.5, 0.8];
+
+    tValues.forEach(t => {
+        // 1. Get point on curve
+        const origin = cubicBezier(t, p0, p1.pos, p2.pos, p3);
+        
+        // 2. Get derivative vector (velocity)
+        const tangent = cubicDerivative(t, p0, p1.pos, p2.pos, p3);
+        
+        // 3. Normalize and scale for visualization length
+        const norm = tangent.normalize().mult(40); // 40px long line
+        
+        ctx.beginPath();
+        ctx.moveTo(origin.x, origin.y);
+        ctx.lineTo(origin.x + norm.x, origin.y + norm.y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(origin.x, origin.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+
+function drawControls() {
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.pos.x, p1.pos.y);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(p3.x, p3.y);
+    ctx.lineTo(p2.pos.x, p2.pos.y);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ff5858';
+    
+    [p1, p2].forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.pos.x, p.pos.y, 6, 0, Math.PI*2);
+        ctx.fill();
+    });
+}
+
+function loop() {
+    ctx.clearRect(0, 0, width, height);
+    
+    updatePhysics();
+    drawControls();
+    drawCurve();
+    drawTangents();
+    
+    requestAnimationFrame(loop);
+}
+
+// Input Handling
+window.addEventListener('mousemove', (e) => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+});
+
+window.addEventListener('resize', resize);
+
+// Init
+resize();
+loop();
+
+</script>
+</body>
+</html>
