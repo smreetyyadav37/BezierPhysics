@@ -8,6 +8,12 @@ Just **pure math, physics, and rendering**.
 
 ---
 
+## 📽️ Full Video Walkthrough
+
+▶️ [Watch Demo Video](https://drive.google.com/file/d/1h7yOgRn7TI5x5E9hIxcv7IdWiQMyBrfa/view?usp=sharing)
+
+---
+
 ## 🌟 Project Overview
 
 This project simulates a **cubic Bézier curve** that dynamically reacts to user input, producing a smooth, elastic *rope-like motion*.
