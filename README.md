@@ -52,20 +52,20 @@ Instead of using the recursive **De Casteljau algorithm** (less efficient for re
 
 #### ✏️ Position Equation
 
-For parameter \( t \in [0,1] \):
+For parameter t in [0,1] :
 
-\[
-\mathbf{B}(t) = (1 - t)^3 \mathbf{P}_0
-+ 3(1 - t)^2 t \mathbf{P}_1
-+ 3(1 - t)t^2 \mathbf{P}_2
-+ t^3 \mathbf{P}_3
-\]
+$$
+B(t) = (1 - t)^3 P_0
++ 3(1 - t)^2 t P_1
++ 3(1 - t)t^2 P_2
++ t^3 P_3
+$$
 
-- **\( \mathbf{P}_0, \mathbf{P}_3 \)** → Fixed anchor points (screen edges)  
-- **\( \mathbf{P}_1, \mathbf{P}_2 \)** → Dynamic control points driven by physics  
+- **( P0, P3 )** → Fixed anchor points (screen edges)  
+- **( P1, P2 )** → Dynamic control points driven by physics  
 
 🔁 The curve is rendered by sampling **100 points**  
-(\( \Delta t = 0.01 \)) and connecting them using the Canvas API.
+(Delta t = 0.01) and connecting them using the Canvas API.
 
 ---
 
@@ -75,15 +75,15 @@ To visualize **direction and velocity** along the curve, the **first derivative*
 
 #### ✏️ First Derivative
 
-\[
-\mathbf{B}'(t) =
-3(1 - t)^2(\mathbf{P}_1 - \mathbf{P}_0)
-+ 6(1 - t)t(\mathbf{P}_2 - \mathbf{P}_1)
-+ 3t^2(\mathbf{P}_3 - \mathbf{P}_2)
-\]
+$$
+B'(t) =
+3(1 - t)^2 (P_1 - P_0)
++ 6(1 - t)t (P_2 - P_1)
++ 3t^2 (P_3 - P_2)
+$$
 
 #### 🟢 Visualization Strategy
-At selected points \( t = 0.2, 0.5, 0.8 \):
+At selected points t = 0.2, 0.5, 0.8 :
 
 1. Compute derivative vector  
 2. Normalize (unit length)  
@@ -103,29 +103,29 @@ To achieve realistic rope motion, the control points are modeled as **masses att
 Each animation frame uses **Euler integration**:
 
 #### 1️⃣ Force Calculation
-\[
-\mathbf{F} = -k(\mathbf{x} - \mathbf{x}_{target})
-\]
+$$
+F = -k \left( x - x_{target} \right)
+$$
 
-- \( k = 0.05 \) → Rope stiffness  
+- (k = 0.05) → Rope stiffness  
 - Target position is influenced by mouse movement  
 
 #### 2️⃣ Velocity Update
-\[
-\mathbf{v} = \mathbf{v} + \mathbf{F}
-\]
+$$
+v = v + F
+$$
 
 #### 3️⃣ Damping (Air Resistance)
-\[
-\mathbf{v} = 0.90 \times \mathbf{v}
-\]
+$$
+v = 0.90 \times v
+$$
 
 Prevents infinite oscillation and ensures smooth settling.
 
 #### 4️⃣ Position Update
-\[
-\mathbf{x} = \mathbf{x} + \mathbf{v}
-\]
+$$
+x = x + v
+$$
 
 ---
 
@@ -134,7 +134,7 @@ Prevents infinite oscillation and ensures smooth settling.
 The mouse acts as a **dynamic external force**:
 
 - Distance from screen center creates offset
-- Offset modifies target positions of \( \mathbf{P}_1 \) and \( \mathbf{P}_2 \)
+- Offset modifies target positions of P1 and P2
 - Results in fluid, natural motion resembling wind or pulling
 
 ---
